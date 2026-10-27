@@ -365,7 +365,8 @@ fun ChatScreen(
                         NexusOrb(
                             orbState = orbState,
                             soundLevel = soundLevel,
-                            orbSize = 250.dp,
+                            orbSize = 325.dp,
+                            isTyping = inputText.isNotBlank() && !isGenerating,
                             onClick = {
                                 if (orbState == OrbState.LISTENING) {
                                     viewModel.stopListening()
@@ -400,7 +401,8 @@ fun ChatScreen(
                                 NexusOrb(
                                     orbState = orbState,
                                     soundLevel = soundLevel,
-                                    orbSize = 44.dp
+                                    orbSize = 54.dp,
+                                    isTyping = inputText.isNotBlank() && !isGenerating
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(

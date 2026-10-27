@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,14 +26,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -43,6 +50,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -89,8 +97,11 @@ import com.example.ui.theme.NexusSilverMuted
 import com.example.ui.theme.NexusSurfaceDark
 import com.example.ui.theme.NexusSurfaceElevated
 import com.example.ui.theme.NexusTitanium
+import com.example.BuildConfig
+import com.example.data.update.UpdateState
 import com.example.viewmodel.ConnectionState
 import com.example.viewmodel.NexusViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +120,7 @@ fun SettingsScreen(
     val ttsSpeed by viewModel.ttsSpeed.collectAsState()
     val ttsPitch by viewModel.ttsPitch.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
 
     var customKeyInput by remember { mutableStateOf(viewModel.repository.getCustomApiKey()) }
     var isKeyVisible by remember { mutableStateOf(false) }
@@ -699,6 +711,404 @@ fun SettingsScreen(
             }
         }
 
+        // Section 6: NEXUS Updates (GitHub Releases Channel)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("nexus_updates_section"),
+            color = NexusCardDark,
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = NexusTitanium,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "NEXUS Updates",
+                            color = NexusSilverBright,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Release status badge
+                    val (badgeText, badgeColor) = when (val s = updateState) {
+                        is UpdateState.Idle -> "CURRENT v${BuildConfig.VERSION_NAME}" to NexusSilverMuted
+                        is UpdateState.Checking -> "CHECKING..." to NexusTitanium
+                        is UpdateState.UpdateAvailable -> "NEW UPDATE AVAILABLE" to ElectricCyan
+                        is UpdateState.UpToDate -> "UP TO DATE" to NeonEmerald
+                        is UpdateState.Downloading -> "${s.progressPercent}%" to ElectricCyan
+                        is UpdateState.ReadyToInstall -> "READY TO INSTALL" to NeonEmerald
+                        is UpdateState.Error -> "UPDATE CHECK ERROR" to NeonAmber
+                    }
+
+                    Surface(
+                        color = badgeColor.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = badgeText,
+                            color = badgeColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Channel: GitHub Releases (sharmahimansh429-ai/NEXUS-AI-)",
+                    color = NexusSilverMuted,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                when (val state = updateState) {
+                    is UpdateState.Idle -> {
+                        Text(
+                            text = "Installed Version: v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE}). Check for official APK updates published to the GitHub repository.",
+                            color = NexusSilver,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                    is UpdateState.Checking -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Querying latest GitHub release tags and assets...",
+                                color = NexusSilverBright,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    is UpdateState.UpdateAvailable -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = NexusDeepBlack,
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.4f))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.NewReleases,
+                                        contentDescription = null,
+                                        tint = ElectricCyan,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Version ${state.release.tagName} Available!",
+                                        color = ElectricCyan,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+
+                                if (state.release.releaseTitle.isNotBlank() && state.release.releaseTitle != state.release.tagName) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = state.release.releaseTitle,
+                                        color = NexusSilverBright,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                if (state.release.releaseNotes.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Changelog:",
+                                        color = NexusSilverMuted,
+                                        fontSize = 11.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Text(
+                                        text = state.release.releaseNotes.take(300) + if (state.release.releaseNotes.length > 300) "..." else "",
+                                        color = NexusSilver,
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp,
+                                        maxLines = 5
+                                    )
+                                }
+
+                                state.release.apkAsset?.let { apk ->
+                                    val sizeMb = if (apk.sizeBytes > 0) String.format(Locale.US, " (%.1f MB)", apk.sizeBytes / (1024.0 * 1024.0)) else ""
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Package: ${apk.name}$sizeMb",
+                                        color = NexusSilverMuted,
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    is UpdateState.UpToDate -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = NexusSurfaceDark,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = NeonEmerald,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "NEXUS is up to date (v${state.currentVersion}). You have the latest official release installed.",
+                                    color = NexusSilver,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                    }
+                    is UpdateState.Downloading -> {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Downloading ${state.release.tagName} APK...",
+                                    color = NexusSilverBright,
+                                    fontSize = 12.sp
+                                )
+                                val downloadedMb = state.bytesDownloaded / (1024.0 * 1024.0)
+                                val totalMb = state.totalBytes / (1024.0 * 1024.0)
+                                Text(
+                                    text = if (state.totalBytes > 0) String.format(Locale.US, "%.1f / %.1f MB", downloadedMb, totalMb) else String.format(Locale.US, "%.1f MB", downloadedMb),
+                                    color = ElectricCyan,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { state.progressPercent / 100f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = ElectricCyan,
+                                trackColor = NexusSurfaceElevated
+                            )
+                        }
+                    }
+                    is UpdateState.ReadyToInstall -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = NexusSurfaceDark,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "Update downloaded: ${state.apkFile.name} (${String.format(Locale.US, "%.1f MB", state.apkFile.length() / (1024.0 * 1024.0))}).",
+                                    color = NexusSilverBright,
+                                    fontSize = 12.sp
+                                )
+                                if (!viewModel.canInstallPackages()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Note: Android requires permission to install APK packages from unknown sources.",
+                                        color = NeonAmber,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    is UpdateState.Error -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = NeonAmber.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonAmber.copy(alpha = 0.3f))
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = state.message,
+                                    color = NeonAmber,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+                                if (state.isNetworkIssue) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Please check your internet connection or verify the repository.",
+                                        color = NexusSilverMuted,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (val state = updateState) {
+                        is UpdateState.UpdateAvailable -> {
+                            Button(
+                                onClick = {
+                                    if (state.release.apkAsset != null) {
+                                        viewModel.downloadAndInstallUpdate(state.release)
+                                    } else {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.release.htmlUrl)).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("download_install_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = ElectricCyan,
+                                    contentColor = NexusDeepBlack
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDownload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (state.release.apkAsset != null) "Download & Install" else "View Release Page",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        is UpdateState.ReadyToInstall -> {
+                            if (!viewModel.canInstallPackages()) {
+                                OutlinedButton(
+                                    onClick = { viewModel.openInstallPermissionSettings() },
+                                    modifier = Modifier.weight(1f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonAmber),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Grant Permission", color = NeonAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Button(
+                                onClick = { viewModel.installDownloadedApk(state.apkFile) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("install_apk_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonEmerald,
+                                    contentColor = NexusDeepBlack
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Install APK Now", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                        is UpdateState.Downloading -> {
+                            OutlinedButton(
+                                onClick = {},
+                                enabled = false,
+                                modifier = Modifier.weight(1f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Downloading... ${state.progressPercent}%", color = NexusSilverMuted, fontSize = 12.sp)
+                            }
+                        }
+                        else -> {
+                            Button(
+                                onClick = { viewModel.checkForUpdates() },
+                                enabled = updateState !is UpdateState.Checking,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("check_updates_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NexusTitanium,
+                                    contentColor = NexusDeepBlack
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (updateState is UpdateState.Checking) "Checking..." else "Check for Updates",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Open GitHub Releases link in browser
+                    OutlinedButton(
+                        onClick = {
+                            val url = when (val s = updateState) {
+                                is UpdateState.UpdateAvailable -> s.release.htmlUrl
+                                is UpdateState.Error -> s.releaseUrl ?: "https://github.com/sharmahimansh429-ai/NEXUS-AI-/releases"
+                                else -> "https://github.com/sharmahimansh429-ai/NEXUS-AI-/releases"
+                            }
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        },
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.OpenInNew,
+                            contentDescription = null,
+                            tint = NexusSilver,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Releases", color = NexusSilver, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
         // About Info
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -711,7 +1121,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "NEXUS AI v1.0",
+                    text = "NEXUS AI v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
                     color = NexusSilverBright,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,

@@ -1,23 +1,23 @@
 package com.example.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.example.ui.theme.NexusPureBlack
+import kotlinx.coroutines.isActive
+import java.util.Random
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -31,7 +31,7 @@ private class OceanParticle(
     val baseNormX: Float,
     val baseNormY: Float,
     val diameterDp: Float,
-    val depthLayer: Float, // 0.3f (far) to 1.0f (near)
+    val depthLayer: Float, // 0.35f (far) to 1.0f (near)
     val phaseX: Float,
     val phaseY: Float,
     val driftSpeed: Float,
@@ -40,14 +40,27 @@ private class OceanParticle(
 )
 
 /**
+ * Aesthetic palette for background ocean particles:
+ * Dominant: Silver, Metallic Grey, Pearl White, Ice Blue 🩵
+ * Accents: Mint, Soft Lavender, Subtle Rose Pink
+ */
+private val BgColorSilver = Color(0xFFCBD5E1)
+private val BgColorMetallicGrey = Color(0xFF94A3B8)
+private val BgColorPearlWhite = Color(0xFFF8FAFC)
+private val BgColorIceBlue = Color(0xFFBAE6FD)
+private val BgColorMint = Color(0xFFA7F3D0)
+private val BgColorLavender = Color(0xFFDDD6FE)
+private val BgColorRosePink = Color(0xFFFBCFE8)
+
+/**
  * Premium Futuristic Pure-Black Ocean-Wave Dot-Matrix Background.
  *
  * Renders a full-screen, continuously animated ocean-like wave surface composed of
  * noticeably visible 4–8dp floating particles with subtle depth, glow, parallax, and
  * organic wave undulation.
  *
- * Particles softly shift between silver grey, metallic grey, very light blue, and soft white.
- * Never consumes gestures or blocks touch interactions.
+ * Adapts smoothly to 120Hz, 90Hz, and 60Hz displays with frame-rate-independent timing.
+ * Sits behind all UI elements and never consumes touch events.
  */
 @Composable
 fun NexusOceanParticleBackground(
@@ -55,58 +68,11 @@ fun NexusOceanParticleBackground(
     dimAroundCenter: Boolean = true,
     reducedMotion: Boolean = false
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "NexusOceanWaveLoop")
-
-    // Continuous primary wave cycle (16 seconds)
-    val wavePhase by if (reducedMotion) {
-        remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    } else {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = (2f * PI).toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 16000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "wavePhase"
-        )
-    }
-
-    // Secondary subtle cross-swell phase (22 seconds)
-    val swellPhase by if (reducedMotion) {
-        remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    } else {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = (2f * PI).toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 22000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "swellPhase"
-        )
-    }
-
-    // Gentle metallic/light-blue/silver color transition cycle (26 seconds)
-    val colorPhase by if (reducedMotion) {
-        remember { androidx.compose.runtime.mutableFloatStateOf(0.5f) }
-    } else {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = (2f * PI).toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 26000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "colorPhase"
-        )
-    }
-
     // Generate pre-allocated deterministic particle array with varied 4–8dp diameters
-    val particleCount = 104
+    val particleCount = 112
     val particles = remember {
         val list = ArrayList<OceanParticle>(particleCount)
-        val rng = java.util.Random(133742L)
+        val rng = Random(133742L)
 
         // Varied sizes from 4.0dp to 8.0dp
         val sizeBuckets = floatArrayOf(4.0f, 4.8f, 5.5f, 6.2f, 7.0f, 8.0f)
@@ -114,19 +80,19 @@ fun NexusOceanParticleBackground(
         for (i in 0 until particleCount) {
             val gridCol = i % 8
             val gridRow = i / 8
-            val jitterX = (rng.nextFloat() - 0.5f) * 0.11f
-            val jitterY = (rng.nextFloat() - 0.5f) * 0.07f
+            val jitterX = (rng.nextFloat() - 0.5f) * 0.12f
+            val jitterY = (rng.nextFloat() - 0.5f) * 0.08f
 
             val normX = ((gridCol + 0.5f) / 8f + jitterX).coerceIn(0.02f, 0.98f)
-            val normY = ((gridRow + 0.5f) / 13f + jitterY).coerceIn(0.02f, 0.98f)
+            val normY = ((gridRow + 0.5f) / 14f + jitterY).coerceIn(0.02f, 0.98f)
 
             val size = sizeBuckets[rng.nextInt(sizeBuckets.size)]
             val depth = 0.35f + (size - 4.0f) / 4.0f * 0.65f // Larger particles feel closer
             val phaseX = rng.nextFloat() * (2f * PI.toFloat())
             val phaseY = rng.nextFloat() * (2f * PI.toFloat())
-            val speed = 0.7f + rng.nextFloat() * 0.6f
-            val colorGroup = rng.nextInt(4)
-            val alpha = 0.35f + depth * 0.40f // 0.35f to 0.75f for refined presence
+            val speed = 0.65f + rng.nextFloat() * 0.55f
+            val colorGroup = rng.nextInt(6)
+            val alpha = 0.32f + depth * 0.42f // 0.32f to 0.74f for elegant presence
 
             list.add(
                 OceanParticle(
@@ -145,25 +111,54 @@ fun NexusOceanParticleBackground(
         list
     }
 
+    // Frame-rate-independent continuous timing (120Hz/90Hz/60Hz adaptive)
+    var wavePhase by remember { mutableFloatStateOf(0f) }
+    var swellPhase by remember { mutableFloatStateOf(0f) }
+    var colorPhase by remember { mutableFloatStateOf(0f) }
+    val frameTrigger = remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(reducedMotion) {
+        if (reducedMotion) return@LaunchedEffect
+
+        var lastNanos = 0L
+        while (isActive) {
+            withFrameNanos { nowNanos ->
+                if (lastNanos > 0L) {
+                    val dt = ((nowNanos - lastNanos) / 1_000_000_000f).coerceIn(0.001f, 0.045f)
+
+                    // Wave cycle (approx 16s period)
+                    val waveSpeed = (2f * PI / 16.0f).toFloat()
+                    wavePhase = (wavePhase + waveSpeed * dt) % (2f * PI.toFloat())
+
+                    // Swell cycle (approx 22s period)
+                    val swellSpeed = (2f * PI / 22.0f).toFloat()
+                    swellPhase = (swellPhase + swellSpeed * dt) % (2f * PI.toFloat())
+
+                    // Color evolution (approx 28s period)
+                    val colorSpeed = (2f * PI / 28.0f).toFloat()
+                    colorPhase = (colorPhase + colorSpeed * dt) % (2f * PI.toFloat())
+                }
+                lastNanos = nowNanos
+                frameTrigger.longValue = nowNanos
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(NexusPureBlack)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val _t = frameTrigger.longValue
+
             val canvasW = size.width
             val canvasH = size.height
             if (canvasW <= 0f || canvasH <= 0f) return@Canvas
 
             val centerX = canvasW * 0.5f
             val centerY = canvasH * 0.45f
-            val coreDimRadiusPx = if (dimAroundCenter) canvasW * 0.36f else 0f
-
-            // Palette: Silver grey, metallic grey, very light blue, soft white
-            val metallicGrey = Color(0xFF64748B)
-            val silverGrey = Color(0xFF94A3B8)
-            val lightBlue = Color(0xFFBAE6FD)
-            val softWhite = Color(0xFFF8FAFC)
+            val coreDimRadiusPx = if (dimAroundCenter) canvasW * 0.40f else 0f
 
             val colorCycleT = (sin(colorPhase) + 1f) * 0.5f // 0f..1f
 
@@ -184,19 +179,21 @@ fun NexusOceanParticleBackground(
                 if (dimAroundCenter) {
                     val distToCenter = sqrt((x - centerX) * (x - centerX) + (y - centerY) * (y - centerY))
                     if (distToCenter < coreDimRadiusPx) {
-                        val factor = (distToCenter / coreDimRadiusPx).coerceIn(0.12f, 1f)
+                        val factor = (distToCenter / coreDimRadiusPx).coerceIn(0.10f, 1f)
                         particleAlpha *= factor
                     }
                 }
 
-                if (particleAlpha <= 0.05f) continue
+                if (particleAlpha <= 0.04f) continue
 
-                // Soft color shift across metallic, silver, light-blue, and white
+                // Soft color shift across metallic, silver, light-blue, white, and subtle accents
                 val particleColor = when (p.colorGroup) {
-                    0 -> lerpColor(metallicGrey, silverGrey, colorCycleT)
-                    1 -> lerpColor(silverGrey, softWhite, colorCycleT)
-                    2 -> lerpColor(silverGrey, lightBlue, colorCycleT)
-                    else -> lerpColor(lightBlue, softWhite, colorCycleT)
+                    0 -> lerpColor(BgColorMetallicGrey, BgColorSilver, colorCycleT)
+                    1 -> lerpColor(BgColorSilver, BgColorPearlWhite, colorCycleT)
+                    2 -> lerpColor(BgColorSilver, BgColorIceBlue, colorCycleT)
+                    3 -> lerpColor(BgColorIceBlue, BgColorPearlWhite, colorCycleT)
+                    4 -> lerpColor(BgColorIceBlue, BgColorMint, colorCycleT)
+                    else -> lerpColor(BgColorSilver, BgColorLavender, colorCycleT)
                 }
 
                 val radiusPx = (p.diameterDp * 0.5f) * density
@@ -218,8 +215,8 @@ fun NexusOceanParticleBackground(
                 // 3. Subtle bright core sparkle on closer particles
                 if (p.depthLayer > 0.65f) {
                     drawCircle(
-                        color = Color.White.copy(alpha = (particleAlpha * 0.85f).coerceIn(0f, 1f)),
-                        radius = radiusPx * 0.42f,
+                        color = Color.White.copy(alpha = (particleAlpha * 0.82f).coerceIn(0f, 1f)),
+                        radius = radiusPx * 0.40f,
                         center = Offset(x, y)
                     )
                 }

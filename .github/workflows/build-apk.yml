@@ -1,19 +1,25 @@
-
-name: Build NEXUS APK
+name: Build and Publish NEXUS APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -24,25 +30,108 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Generate debug keystore
+      - name: Extract App Version
+        id: get_version
         run: |
-          keytool -genkeypair -v \
-            -keystore debug.keystore \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+          VERSION_NAME=$(grep 'versionName = ' app/build.gradle.kts | head -n 1 | cut -d '"' -f 2)
+          VERSION_CODE=$(grep 'versionCode = ' app/build.gradle.kts | head -n 1 | awk '{print $3}')
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          else
+            RELEASE_TAG="v${VERSION_NAME}"
+          fi
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
+          echo "Detected version: ${VERSION_NAME} (code: ${VERSION_CODE}), Tag: ${RELEASE_TAG}"
 
-      - name: Build APK
-        run: gradle :app:assembleDebug
+      - name: Prepare Signing Keystores
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Ensure debug keystore is present
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
-      - name: Upload APK
+          # Prepare release keystore: decode secret if present, or generate stable default
+          RELEASE_PASS="${STORE_PASS:-nexus_release_key_2026}"
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
+          elif [ ! -f "my-upload-key.jks" ]; then
+            keytool -genkeypair -v \
+              -keystore my-upload-key.jks \
+              -storepass "$RELEASE_PASS" \
+              -alias upload \
+              -keypass "${KEY_PASS:-$RELEASE_PASS}" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=NEXUS AI Release,O=NEXUS,C=US"
+          fi
+
+      - name: Build APK with Gradle
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'nexus_release_key_2026' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'nexus_release_key_2026' }}
+        run: |
+          # Try assembleRelease first, fallback to assembleDebug if release signing fails
+          if gradle :app:assembleRelease; then
+            echo "Release build succeeded."
+          else
+            echo "Release build failed, falling back to assembleDebug..."
+            gradle :app:assembleDebug
+          fi
+
+      - name: Package Release Assets
+        run: |
+          mkdir -p release-assets
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" 2>/dev/null | head -n 1)
+          if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
+            cp "$RELEASE_APK" "release-assets/nexus-ai-${RELEASE_TAG}.apk"
+          else
+            DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" 2>/dev/null | head -n 1)
+            cp "$DEBUG_APK" "release-assets/nexus-ai-${RELEASE_TAG}.apk"
+          fi
+          echo "Packaged asset: $(ls -lh release-assets/)"
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-AI-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: nexus-ai-${{ env.RELEASE_TAG }}
+          path: release-assets/*.apk
           if-no-files-found: error
-          
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "NEXUS AI ${{ env.RELEASE_TAG }}"
+          body: |
+            ## NEXUS AI ${{ env.RELEASE_TAG }}
+            
+            ### Highlights
+            - Official In-App APK Update System with GitHub Releases API integration
+            - Live generative Gemini conversational AI model with dynamic parameters
+            - Bilingual Hindi and English voice recognition and neural Text-To-Speech engine
+            - Ultra-responsive 120Hz 3D particle core and organic ocean wave background
+            
+            ### Download & Installation
+            Download the attached `nexus-ai-${{ env.RELEASE_TAG }}.apk` asset below and open on your Android device (Android 7.0+).
+          files: release-assets/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

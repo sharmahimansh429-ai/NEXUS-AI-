@@ -19,6 +19,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.BuildConfig
+import com.example.data.update.AppRelease
+import com.example.data.update.UpdateManager
+import com.example.data.update.UpdateState
+import com.example.data.update.VersionComparator
+import java.io.File
+import java.io.IOException
 
 sealed class ConnectionState {
     object Checking : ConnectionState()
@@ -39,6 +46,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     val speechManager = SpeechManager(application)
     val ttsManager = TextToSpeechManager(application)
+    val updateManager = UpdateManager(application)
 
     // Current Conversation ID
     private val _currentConversationId = MutableStateFlow<Long>(0L)
@@ -82,6 +90,10 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     // Transient Voice Feedback Status (avoids intrusive dialog popups for speech timeouts)
     val voiceFeedback = MutableStateFlow<String?>(null)
+
+    // App Update State (GitHub Releases & APK Updates)
+    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
     private var lastPrompt: String? = null
 
@@ -391,6 +403,100 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissError() {
         _errorMessage.value = null
+    }
+
+    // In-App APK Updates (GitHub Releases)
+    fun checkForUpdates() {
+        if (_updateState.value is UpdateState.Checking || _updateState.value is UpdateState.Downloading) return
+        _updateState.value = UpdateState.Checking
+
+        viewModelScope.launch {
+            val result = updateManager.checkLatestRelease()
+            result.onSuccess { release ->
+                val currentVer = BuildConfig.VERSION_NAME
+                if (VersionComparator.isRemoteNewer(release.tagName, currentVer)) {
+                    _updateState.value = UpdateState.UpdateAvailable(
+                        release = release,
+                        currentVersion = currentVer
+                    )
+                } else {
+                    _updateState.value = UpdateState.UpToDate(
+                        currentVersion = currentVer,
+                        latestTag = release.tagName
+                    )
+                }
+            }.onFailure { error ->
+                _updateState.value = UpdateState.Error(
+                    message = error.localizedMessage ?: "Failed to reach GitHub release service.",
+                    isNetworkIssue = error is IOException,
+                    releaseUrl = UpdateManager.GITHUB_REPO_URL
+                )
+            }
+        }
+    }
+
+    fun downloadAndInstallUpdate(release: AppRelease) {
+        if (_updateState.value is UpdateState.Downloading) return
+
+        viewModelScope.launch {
+            _updateState.value = UpdateState.Downloading(
+                progressPercent = 0,
+                bytesDownloaded = 0L,
+                totalBytes = release.apkAsset?.sizeBytes ?: 0L,
+                release = release
+            )
+
+            val downloadResult = updateManager.downloadApk(release) { percent, downloaded, total ->
+                _updateState.value = UpdateState.Downloading(
+                    progressPercent = percent,
+                    bytesDownloaded = downloaded,
+                    totalBytes = total,
+                    release = release
+                )
+            }
+
+            downloadResult.onSuccess { apkFile ->
+                _updateState.value = UpdateState.ReadyToInstall(
+                    apkFile = apkFile,
+                    release = release
+                )
+
+                if (updateManager.canRequestPackageInstalls()) {
+                    val installResult = updateManager.installApk(apkFile)
+                    if (installResult.isFailure) {
+                        _updateState.value = UpdateState.Error(
+                            message = "Could not launch package installer: ${installResult.exceptionOrNull()?.message}"
+                        )
+                    }
+                }
+            }.onFailure { error ->
+                _updateState.value = UpdateState.Error(
+                    message = "Download failed: ${error.localizedMessage ?: "Network error"}"
+                )
+            }
+        }
+    }
+
+    fun installDownloadedApk(apkFile: File) {
+        val installResult = updateManager.installApk(apkFile)
+        if (installResult.isFailure) {
+            _updateState.value = UpdateState.Error(
+                message = "Installer launch error: ${installResult.exceptionOrNull()?.message}"
+            )
+        }
+    }
+
+    fun canInstallPackages(): Boolean = updateManager.canRequestPackageInstalls()
+
+    fun openInstallPermissionSettings() {
+        try {
+            val intent = updateManager.getManageUnknownSourcesIntent()
+            getApplication<Application>().startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun dismissUpdateState() {
+        _updateState.value = UpdateState.Idle
     }
 
     override fun onCleared() {
