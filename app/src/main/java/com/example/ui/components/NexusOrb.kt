@@ -51,19 +51,19 @@ enum class OrbState {
 
 /**
  * Aesthetic Color Palette for NEXUS Core & Particles:
- * Dominant: Silver, metallic grey, graphite, pearl white, ice blue 🩵
- * Accents: Cyan, soft lavender, muted violet, mint, subtle rose pink
+ * Dominant: Silver, metallic grey, graphite, pearl white, steel ice blue
+ * Accents: Titanium cyan, muted lavender, desaturated violet, subtle champagne
  */
-private val ColorSilver = Color(0xFFCBD5E1)
-private val ColorMetallicGrey = Color(0xFF94A3B8)
-private val ColorGraphite = Color(0xFF64748B)
-private val ColorPearlWhite = Color(0xFFF8FAFC)
-private val ColorIceBlue = Color(0xFFBAE6FD)
-private val ColorCyan = Color(0xFF38BDF8)
-private val ColorSoftLavender = Color(0xFFDDD6FE)
-private val ColorMutedViolet = Color(0xFFA78BFA)
-private val ColorMint = Color(0xFFA7F3D0)
-private val ColorRosePink = Color(0xFFFBCFE8)
+private val ColorSilver = Color(0xFF94A3B8)
+private val ColorMetallicGrey = Color(0xFF475569)
+private val ColorGraphite = Color(0xFF334155)
+private val ColorPearlWhite = Color(0xFFFFFFFF)
+private val ColorIceBlue = Color(0xFF689FB8)
+private val ColorCyan = Color(0xFF5A8E9F)
+private val ColorSoftLavender = Color(0xFF8B88A8)
+private val ColorMutedViolet = Color(0xFF7E7B9A)
+private val ColorMint = Color(0xFF5E8B83)
+private val ColorRosePink = Color(0xFFA88289)
 
 /**
  * Pre-calculated point on unit sphere with coordinates, layer, and aesthetic color identity
@@ -644,12 +644,12 @@ private fun DrawScope.draw3DFineParticleCloud(
             }
         }
 
-        // Micro-drop shadow for 3D depth over white
-        if (depthNorm > 0.40f) {
+        // Micro-drop shadow for subtle 3D separation over pure white
+        if (depthNorm > 0.65f) {
             drawCircle(
-                color = Color(0xFF475569).copy(alpha = (0.10f * depthNorm * baseAlpha).coerceIn(0.02f, 0.18f)),
-                radius = dotRadius * 1.15f,
-                center = Offset(screenX + 0.6f, screenY + 0.8f)
+                color = Color(0xFF334155).copy(alpha = (0.04f * depthNorm * baseAlpha).coerceIn(0.01f, 0.05f)),
+                radius = dotRadius * 1.05f,
+                center = Offset(screenX + 0.3f, screenY + 0.4f)
             )
         }
 
@@ -660,12 +660,12 @@ private fun DrawScope.draw3DFineParticleCloud(
             center = Offset(screenX, screenY)
         )
 
-        // Micro-bloom halo for prominent foreground nodes (sizeClass == 2 or closest foreground)
-        if (p.sizeClass == 2 || (depthNorm > 0.85f && p.layer == 0)) {
-            val haloAlpha = (0.16f * depthNorm).coerceIn(0f, 0.28f)
+        // Restrained optical halo for key foreground nodes
+        if (p.sizeClass == 2 || (depthNorm > 0.88f && p.layer == 0)) {
+            val haloAlpha = (0.09f * depthNorm).coerceIn(0f, 0.14f)
             drawCircle(
                 color = dotColor.copy(alpha = haloAlpha),
-                radius = dotRadius * 2.0f,
+                radius = dotRadius * 1.4f,
                 center = Offset(screenX, screenY)
             )
         }

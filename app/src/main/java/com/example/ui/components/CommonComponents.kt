@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,10 +44,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.GlassBorder
+import com.example.ui.theme.GlassBorderSubtle
 import com.example.ui.theme.GlassHighlight
 import com.example.ui.theme.GlassMilkyCard
 import com.example.ui.theme.GlassMilkyWhite
 import com.example.ui.theme.GlassShadow
+import com.example.ui.theme.NeonAmber
 import com.example.ui.theme.NeonEmerald
 import com.example.ui.theme.NeonRed
 import com.example.ui.theme.NexusBorderHairline
@@ -54,13 +57,14 @@ import com.example.ui.theme.NexusCardDark
 import com.example.ui.theme.NexusSilver
 import com.example.ui.theme.NexusSilverBright
 import com.example.ui.theme.NexusSilverDark
+import com.example.ui.theme.NexusSilverMuted
 import com.example.ui.theme.NexusSurfaceDark
 import com.example.ui.theme.NexusSurfaceElevated
 import com.example.ui.theme.NexusTitanium
 
 fun Modifier.cyberBorder(
     color: Color = NexusBorderHairline,
-    width: Dp = 1.dp,
+    width: Dp = 0.5.dp,
     shape: Shape = RoundedCornerShape(12.dp)
 ) = this
     .border(width = width, color = color, shape = shape)
@@ -74,24 +78,24 @@ fun CyberStatusBadge(
 ) {
     Surface(
         color = NexusSurfaceDark,
-        shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.5.dp, NexusBorderHairline)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(7.dp)
+                    .size(5.dp)
                     .background(statusColor, CircleShape)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = text.uppercase(),
-                color = NexusSilverBright,
-                fontSize = 10.5.sp,
-                fontWeight = FontWeight.SemiBold,
+                color = NexusSilver,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.Monospace,
                 letterSpacing = 1.sp
             )
@@ -100,21 +104,21 @@ fun CyberStatusBadge(
 }
 
 /**
- * Frosted glass modifier providing translucent milky surface, reflection highlight,
- * subtle border, and soft shadow.
+ * Frosted glass modifier providing high-translucency milky surface, micro-hairline border,
+ * delicate reflection highlight, and soft diffuse shadow.
  */
 fun Modifier.frostedGlass(
     shape: Shape = RoundedCornerShape(16.dp),
     backgroundColor: Color = GlassMilkyCard,
     borderColor: Color = GlassBorder,
-    borderWidth: Dp = 1.dp,
-    elevation: Dp = 6.dp
+    borderWidth: Dp = 0.5.dp,
+    elevation: Dp = 3.dp
 ) = this
     .shadow(
         elevation = elevation,
         shape = shape,
         spotColor = GlassShadow,
-        ambientColor = GlassShadow.copy(alpha = 0.05f)
+        ambientColor = GlassShadow.copy(alpha = 0.03f)
     )
     .background(backgroundColor, shape)
     .border(width = borderWidth, color = borderColor, shape = shape)
@@ -122,8 +126,7 @@ fun Modifier.frostedGlass(
 
 /**
  * Minimalist frosted glass status indicator container.
- * Translucent milky-white container with subtle reflection, thin silver-white border,
- * and a glowing status indicator dot (Green = active, Red = alert, Grey = checking).
+ * Precision 34dp circular lens with delicate micro-refraction and clean indicator pin.
  */
 @Composable
 fun NexusConnectionIndicator(
@@ -132,10 +135,10 @@ fun NexusConnectionIndicator(
     modifier: Modifier = Modifier
 ) {
     val (indicatorColor, isChecking) = when (state) {
-        is com.example.viewmodel.ConnectionState.Online -> Color(0xFF10B981) to false
+        is com.example.viewmodel.ConnectionState.Online -> Color(0xFF059669) to false
         is com.example.viewmodel.ConnectionState.Checking -> Color(0xFF64748B) to true
         is com.example.viewmodel.ConnectionState.Error,
-        is com.example.viewmodel.ConnectionState.NoKey -> Color(0xFFEF4444) to false
+        is com.example.viewmodel.ConnectionState.NoKey -> Color(0xFFE11D48) to false
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "indicatorTransition")
@@ -156,44 +159,44 @@ fun NexusConnectionIndicator(
 
     Surface(
         modifier = modifier
-            .size(38.dp)
+            .size(34.dp)
             .shadow(
-                elevation = 4.dp,
+                elevation = 2.dp,
                 shape = CircleShape,
                 spotColor = GlassShadow,
-                ambientColor = GlassShadow.copy(alpha = 0.04f)
+                ambientColor = GlassShadow.copy(alpha = 0.02f)
             )
             .clickable(onClick = onIndicatorClick),
         shape = CircleShape,
         color = GlassMilkyWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Subtle glass reflection highlight along top edge
+            // Subtle glass refraction gradient
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(30.dp)
                     .background(
                         Brush.verticalGradient(
-                            listOf(GlassHighlight, Color.Transparent)
+                            listOf(GlassHighlight.copy(alpha = 0.6f), Color.Transparent)
                         ),
                         CircleShape
                     )
             )
 
-            // Outer soft glow halo
+            // Outer soft aura
             Box(
                 modifier = Modifier
-                    .size(16.dp)
-                    .background(indicatorColor.copy(alpha = 0.22f * checkingAlpha), CircleShape)
+                    .size(12.dp)
+                    .background(indicatorColor.copy(alpha = 0.16f * checkingAlpha), CircleShape)
             )
             // Core luminous point
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(6.dp)
                     .background(indicatorColor.copy(alpha = checkingAlpha), CircleShape)
             )
         }
@@ -208,33 +211,33 @@ fun ApiKeyWarningBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
-        color = NexusCardDark,
+        color = Color(0xFFFFFBEB), // Soft warm champagne/amber tint on pure white
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.45f))
+        border = BorderStroke(0.5.dp, NeonAmber.copy(alpha = 0.40f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Key,
                 contentDescription = null,
-                tint = NeonRed,
-                modifier = Modifier.size(20.dp)
+                tint = NeonAmber,
+                modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Gemini API Key Required",
                     color = NexusSilverBright,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
                 )
                 Text(
                     text = "Configure in AI Studio Secrets or enter key in Settings.",
-                    color = NexusSilver,
+                    color = NexusSilverMuted,
                     fontSize = 11.sp
                 )
             }
@@ -242,9 +245,10 @@ fun ApiKeyWarningBanner(
             OutlinedButton(
                 onClick = onConfigureClick,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = NexusSilverBright),
-                border = androidx.compose.foundation.BorderStroke(1.dp, NexusSilverDark)
+                border = BorderStroke(0.5.dp, NexusBorderHairline),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Setup", fontSize = 11.5.sp)
+                Text("Setup", fontSize = 11.sp)
             }
         }
     }
@@ -260,17 +264,17 @@ fun CyberChip(
     Surface(
         modifier = modifier.clickable { onClick() },
         color = NexusSurfaceDark,
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(0.5.dp, NexusBorderHairline)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = text,
-                color = NexusTitanium,
-                fontSize = 12.sp,
+                color = NexusSilver,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.Normal
             )
         }
