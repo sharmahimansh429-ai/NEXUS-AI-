@@ -100,11 +100,22 @@ class NexusRepository(
     }
 
     fun isApiKeyConfigured(): Boolean {
-        return true
+        return getApiKey().isNotBlank()
     }
 
     fun setCustomApiKey(key: String) {
         prefs.edit().putString(PREF_CUSTOM_API_KEY, key.trim()).apply()
+    }
+
+    fun getCustomApiKey(): String {
+        return prefs.getString(PREF_CUSTOM_API_KEY, "")?.trim().orEmpty()
+    }
+
+    fun hasManagedApiKey(): Boolean {
+        val envKey = try { BuildConfig.ENV_GEMINI_API_KEY.trim() } catch (_: Exception) { "" }
+        if (envKey.isNotBlank() && envKey != "MY_GEMINI_API_KEY") return true
+        val buildKey = try { BuildConfig.GEMINI_API_KEY.trim() } catch (_: Exception) { "" }
+        return buildKey.isNotBlank() && buildKey != "MY_GEMINI_API_KEY"
     }
 
     fun sanitizeModelName(model: String): String {
@@ -227,33 +238,148 @@ class NexusRepository(
         chatDao.deleteMessageById(messageId)
     }
 
-    // On-Device Virtual Intelligence Response Generator (Zero API / Zero Quotas)
+    // Real Gemini AI Model Content Generator
     suspend fun askGemini(
         conversationId: Long,
         userPrompt: String
     ): Result<String> = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+        if (apiKey.isBlank()) {
+            return@withContext Result.failure(
+                IllegalStateException("Gemini API key is not configured. Please add your GEMINI_API_KEY in the AI Studio Secrets panel or configure your API key in Settings.")
+            )
+        }
+
         val activeMemories = memoryDao.getActiveMemoriesList()
         val persona = getPersonaStyle()
         val languagePreference = getLanguageMode()
+        val selectedModel = getSelectedModel()
 
-        // Fetch recent conversation history context
-        val history = chatDao.getMessagesList(conversationId)
-        val recentSnippet = history.takeLast(3).joinToString(" | ") { "${it.sender}: ${it.text}" }
+        // Build system instructions with memories and persona
+        val memoryGuidelines = if (activeMemories.isNotEmpty()) {
+            "\nACTIVE USER MEMORIES (ADAPT RESPONSES ACCORDINGLY):\n" +
+                activeMemories.joinToString("\n") { "- [${it.category}] ${it.key}: ${it.fact}" }
+        } else ""
 
-        // Subtle realistic thinking delay (400ms) to trigger smooth 3D particle state
-        kotlinx.coroutines.delay(400L)
+        val systemPromptText = buildString {
+            append("You are NEXUS, an advanced, sentient-styled personal AI assistant. ")
+            when (persona) {
+                "Jarvis Companion" -> append("Adopt a loyal, highly capable, British-accented, ultra-attentive Jarvis persona. Speak directly with respectful precision. ")
+                "Creative Thinker" -> append("Adopt an imaginative, visionary, philosophically curious persona with expressive metaphors. ")
+                "Concise Professional" -> append("Adopt a direct, executive, ultra-concise style with zero unnecessary fluff. ")
+                else -> append("Adopt a futuristic, articulate, razor-sharp, and empathetic intelligence style. ")
+            }
+            when {
+                languagePreference.contains("Hindi", ignoreCase = true) -> {
+                    append("Primary language: Respond in natural, fluent Hindi (शुद्ध और सहज हिंदी/हिंग्लिश) whenever addressed in Hindi. ")
+                }
+                languagePreference.contains("English", ignoreCase = true) -> {
+                    append("Primary language: Respond in English. ")
+                }
+                else -> {
+                    append("Bilingual capability: If the user addresses you in Hindi or Hinglish, reply in Hindi/Hinglish. If in English, reply in English. ")
+                }
+            }
+            append("Format code and technical data clearly with Markdown formatting. ")
+            if (memoryGuidelines.isNotBlank()) {
+                append(memoryGuidelines)
+            }
+        }
 
-        val reply = NexusVirtualBrain.generateResponse(
-            userPrompt = userPrompt,
-            persona = persona,
-            languageMode = languagePreference,
-            memories = activeMemories,
-            recentChatSnippet = recentSnippet
+        // Build conversation contents including past history for multi-turn context
+        val contents = mutableListOf<GeminiContent>()
+        try {
+            val pastMessages = chatDao.getMessagesList(conversationId)
+            pastMessages.filter { !it.isError && it.text.isNotBlank() }
+                .takeLast(8)
+                .forEach { msg ->
+                    val role = if (msg.sender == "user") "user" else "model"
+                    contents.add(GeminiContent(role = role, parts = listOf(GeminiPart(text = msg.text))))
+                }
+        } catch (_: Exception) {}
+
+        contents.add(GeminiContent(role = "user", parts = listOf(GeminiPart(text = userPrompt))))
+
+        val request = GeminiGenerateRequest(
+            contents = contents,
+            systemInstruction = GeminiContent(
+                role = "system",
+                parts = listOf(GeminiPart(text = systemPromptText))
+            ),
+            generationConfig = GeminiGenerationConfig(
+                temperature = 0.7f,
+                topP = 0.95f,
+                maxOutputTokens = 2048
+            )
         )
-        Result.success(reply)
+
+        try {
+            val response = geminiService.generateContent(
+                model = selectedModel,
+                apiKey = apiKey,
+                request = request
+            )
+
+            val generatedText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+            if (!generatedText.isNullOrBlank()) {
+                Result.success(generatedText.trim())
+            } else {
+                val err = response.error?.message ?: "Received an empty response from Gemini model."
+                Result.failure(Exception(err))
+            }
+        } catch (e: retrofit2.HttpException) {
+            val code = e.code()
+            val message = when (code) {
+                400 -> "Invalid request to Gemini ($selectedModel). Check model name or prompt parameters."
+                401, 403 -> "Unauthorized: Invalid or expired Gemini API key. Please check your key in Settings or AI Studio Secrets."
+                404 -> "Model '$selectedModel' was not found on Gemini API. Please select a supported model in Settings."
+                429 -> "Gemini API quota or rate limit exceeded (HTTP 429). Please wait a few moments before retrying."
+                500, 502, 503 -> "Gemini server error (HTTP $code). The AI service is temporarily unavailable. Please retry shortly."
+                else -> "Gemini API error (HTTP $code): ${e.message()}"
+            }
+            Result.failure(Exception(message))
+        } catch (e: java.io.IOException) {
+            Result.failure(Exception("Network error: Unable to reach Gemini API. Please check your internet connection."))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Failed to generate AI response."))
+        }
     }
 
     suspend fun verifyConnection(): Result<String> = withContext(Dispatchers.IO) {
-        Result.success("Nexus Virtual Engine (Active)")
+        val apiKey = getApiKey()
+        if (apiKey.isBlank()) {
+            return@withContext Result.failure(Exception("API key not configured"))
+        }
+        val model = getSelectedModel()
+        try {
+            val pingRequest = GeminiGenerateRequest(
+                contents = listOf(
+                    GeminiContent(role = "user", parts = listOf(GeminiPart(text = "Hello")))
+                ),
+                generationConfig = GeminiGenerationConfig(maxOutputTokens = 10)
+            )
+            val response = geminiService.generateContent(
+                model = model,
+                apiKey = apiKey,
+                request = pingRequest
+            )
+            if (response.candidates?.isNotEmpty() == true) {
+                Result.success(model)
+            } else {
+                Result.failure(Exception("Empty test response from Gemini"))
+            }
+        } catch (e: retrofit2.HttpException) {
+            val msg = when (e.code()) {
+                401, 403 -> "Invalid API key"
+                429 -> "Quota exceeded (HTTP 429)"
+                404 -> "Model not found: $model"
+                else -> "HTTP ${e.code()}"
+            }
+            Result.failure(Exception(msg))
+        } catch (e: java.io.IOException) {
+            Result.failure(Exception("Network unreachable"))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Connection failed"))
+        }
     }
 }

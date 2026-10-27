@@ -76,9 +76,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     val ttsSpeed = MutableStateFlow(repository.getTtsSpeed())
     val ttsPitch = MutableStateFlow(repository.getTtsPitch())
 
-    // Connection State (On-Device Virtual Engine)
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Online("Nexus Virtual Brain"))
+    // Connection State (Real Gemini Model)
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Checking)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+
+    // Transient Voice Feedback Status (avoids intrusive dialog popups for speech timeouts)
+    val voiceFeedback = MutableStateFlow<String?>(null)
 
     private var lastPrompt: String? = null
 
@@ -121,18 +124,25 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             speechManager.speechState.collect { state ->
                 when (state) {
+                    is SpeechManager.SpeechState.Listening -> {
+                        voiceFeedback.value = "Listening (${languageMode.value})..."
+                    }
                     is SpeechManager.SpeechState.PartialResult -> {
                         inputText.value = state.text
+                        voiceFeedback.value = "Transcribing: ${state.text}"
                     }
                     is SpeechManager.SpeechState.FinalResult -> {
                         inputText.value = state.text
+                        voiceFeedback.value = null
                         sendMessage(state.text)
                         speechManager.resetState()
                     }
                     is SpeechManager.SpeechState.Error -> {
-                        _errorMessage.value = state.message
+                        voiceFeedback.value = state.message
                     }
-                    else -> {}
+                    is SpeechManager.SpeechState.Idle -> {
+                        // Keep any existing feedback or clear
+                    }
                 }
             }
         }
@@ -363,6 +373,13 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAutoSpeak(enabled: Boolean) {
         repository.setAutoSpeakEnabled(enabled)
         isAutoSpeak.value = enabled
+        if (!enabled) {
+            ttsManager.stop()
+        }
+    }
+
+    fun toggleAutoSpeak() {
+        updateAutoSpeak(!isAutoSpeak.value)
     }
 
     fun updateTtsSettings(speed: Float, pitch: Float) {

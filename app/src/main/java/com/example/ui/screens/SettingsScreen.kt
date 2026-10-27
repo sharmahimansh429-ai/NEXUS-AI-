@@ -110,7 +110,7 @@ fun SettingsScreen(
     val ttsPitch by viewModel.ttsPitch.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
-    var customKeyInput by remember { mutableStateOf("") }
+    var customKeyInput by remember { mutableStateOf(viewModel.repository.getCustomApiKey()) }
     var isKeyVisible by remember { mutableStateOf(false) }
 
     val models = listOf("gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.1-pro-preview")
@@ -183,7 +183,7 @@ fun SettingsScreen(
             }
         }
 
-        // Section 1: Standalone On-Device Virtual Intelligence
+        // Section 1: Gemini API Configuration & Real Diagnostics
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = NexusCardDark,
@@ -198,27 +198,35 @@ fun SettingsScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.SmartToy,
+                            imageVector = Icons.Default.Key,
                             contentDescription = null,
                             tint = NexusTitanium,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "NEXUS Virtual Brain",
+                            text = "Gemini API Connection",
                             color = NexusSilverBright,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
+                    // Live Status Badge
+                    val (badgeText, badgeColor) = when (connectionState) {
+                        is ConnectionState.Online -> "ONLINE" to NeonEmerald
+                        is ConnectionState.Checking -> "TESTING..." to NexusSilver
+                        is ConnectionState.NoKey -> "KEY MISSING" to NeonAmber
+                        is ConnectionState.Error -> "ALERT" to NeonRed
+                    }
+
                     Surface(
-                        color = NeonEmerald.copy(alpha = 0.15f),
+                        color = badgeColor.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text(
-                            text = "ACTIVE (ON-DEVICE)",
-                            color = NeonEmerald,
+                            text = badgeText,
+                            color = badgeColor,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
@@ -229,32 +237,138 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                when (val state = connectionState) {
+                    is ConnectionState.Online -> {
+                        Text(
+                            text = "Connected to Google Gemini API using '${state.model}'. Real-time generative responses are operational.",
+                            color = NexusSilver,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                    is ConnectionState.Checking -> {
+                        Text(
+                            text = "Verifying Gemini API credentials and testing connection...",
+                            color = NexusSilver,
+                            fontSize = 12.sp
+                        )
+                    }
+                    is ConnectionState.NoKey -> {
+                        Text(
+                            text = "No Gemini API key configured. Enter your API key below or set GEMINI_API_KEY in the AI Studio Secrets panel.",
+                            color = NeonAmber,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                    is ConnectionState.Error -> {
+                        Text(
+                            text = "Diagnostic alert: ${state.message}",
+                            color = NeonRed,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Custom API Key Input Field
                 Text(
-                    text = "NEXUS is running as an autonomous on-device virtual assistant. No API keys, external servers, quotas, or internet required. All conversations, bilingual speech, and memory records are processed locally on your phone.",
-                    color = NexusSilver,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp
+                    text = if (viewModel.repository.hasManagedApiKey()) "API Key (Managed key active from environment, override below if desired):" else "Gemini API Key:",
+                    color = NexusSilverMuted,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
                 )
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        viewModel.checkConnection()
-                        Toast.makeText(context, "NEXUS Virtual Engine is 100% active and nominal", Toast.LENGTH_SHORT).show()
+                OutlinedTextField(
+                    value = customKeyInput,
+                    onValueChange = { customKeyInput = it },
+                    placeholder = {
+                        Text(
+                            if (viewModel.repository.hasManagedApiKey()) "Managed key active in environment" else "Enter Gemini API Key",
+                            color = NexusSilverDark,
+                            fontSize = 13.sp
+                        )
+                    },
+                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                            Text(
+                                if (isKeyVisible) "HIDE" else "SHOW",
+                                color = NexusTitanium,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NexusTitanium)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = NexusSilverBright,
+                        unfocusedTextColor = NexusSilverBright,
+                        focusedBorderColor = NexusSilver,
+                        unfocusedBorderColor = NexusBorderHairline,
+                        focusedContainerColor = NexusSurfaceDark,
+                        unfocusedContainerColor = NexusSurfaceDark
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = NeonEmerald,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Virtual Engine Nominal", color = NexusTitanium, fontSize = 12.sp)
+                    Button(
+                        onClick = {
+                            viewModel.updateCustomApiKey(customKeyInput)
+                            Toast.makeText(context, "API Key saved. Verifying...", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NexusTitanium,
+                            contentColor = NexusDeepBlack
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Save Key", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    if (customKeyInput.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = {
+                                customKeyInput = ""
+                                viewModel.updateCustomApiKey("")
+                                Toast.makeText(context, "Custom key cleared", Toast.LENGTH_SHORT).show()
+                            },
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Clear", color = NexusSilver, fontSize = 12.sp)
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.checkConnection()
+                            Toast.makeText(context, "Testing connection...", Toast.LENGTH_SHORT).show()
+                        },
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = NexusTitanium,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Test", color = NexusTitanium, fontSize = 12.sp)
+                    }
                 }
             }
         }
