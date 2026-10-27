@@ -217,6 +217,17 @@ class UpdateManager(
                 return Result.failure(IOException("APK file is missing or corrupted."))
             }
 
+            // Verify the package archive is valid and matches our applicationId
+            val packageInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+            if (packageInfo == null) {
+                return Result.failure(IOException("Downloaded file is not a valid Android package archive."))
+            }
+            if (packageInfo.packageName != context.packageName) {
+                return Result.failure(
+                    IOException("Package mismatch: update is '${packageInfo.packageName}', expected '${context.packageName}'.")
+                )
+            }
+
             val authority = "${context.packageName}.fileprovider"
             val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
 

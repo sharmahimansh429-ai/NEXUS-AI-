@@ -2,78 +2,90 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Pure Black & Dark Cinematic Backgrounds
-val NexusPureBlack = Color(0xFF000000)
-val NexusDeepBlack = Color(0xFF06080B)
-val NexusObsidian = Color(0xFF0A0D14)
-val NexusCharcoal = Color(0xFF11151D)
+// Pure White Base Background (#FFFFFF) - Static and unchanged at all times
+val NexusPureWhite = Color(0xFFFFFFFF)
+val NexusPureBlack = Color(0xFFFFFFFF) // Redirect legacy base background to Solid Pure White
+val NexusDeepBlack = Color(0xFFFFFFFF)
+val NexusObsidian = Color(0xFFFAFAFA)
+val NexusCharcoal = Color(0xFFF1F5F9)
 
-// Surfaces & Elevation (Subtle dark layers)
-val NexusCardDark = Color(0xFF12161F)
-val NexusSurfaceDark = Color(0xFF181D28)
-val NexusSurfaceElevated = Color(0xFF202735)
-val NexusSurfaceHighlight = Color(0xFF283142)
+// Translucent Frosted Milky-White Surfaces & Elevation
+val NexusCardDark = Color(0xF5FFFFFF)
+val NexusSurfaceDark = Color(0xECF8FAFC)
+val NexusSurfaceElevated = Color(0xE0F1F5F9)
+val NexusSurfaceHighlight = Color(0xFFE2E8F0)
 
 // Hairline Borders & Translucency
-val NexusBorderHairline = Color(0x33475569)
-val NexusBorderSubtle = Color(0x1F64748B)
-val NexusBorderFocus = Color(0x6694A3B8)
+val NexusBorderHairline = Color(0x2E94A3B8)
+val NexusBorderSubtle = Color(0x1F94A3B8)
+val NexusBorderFocus = Color(0x8038BDF8)
 
-// Typography & Accents (Crisp Silver & Titanium for Dark Backgrounds)
-val NexusSilverBright = Color(0xFFF8FAFC)
-val NexusSilver = Color(0xFFCBD5E1)
-val NexusSilverMuted = Color(0xFF94A3B8)
-val NexusSilverDark = Color(0xFF64748B)
-val NexusTitanium = Color(0xFFE2E8F0)
+// Typography & Accents (Deep Graphite, Slate & Platinum for Pure White Background)
+val NexusSilverBright = Color(0xFF0F172A) // Crisp dark graphite for high-contrast readability
+val NexusSilver = Color(0xFF334155)       // Deep slate
+val NexusSilverMuted = Color(0xFF64748B)  // Muted slate
+val NexusSilverDark = Color(0xFF94A3B8)   // Soft platinum placeholder
+val NexusTitanium = Color(0xFF0F172A)     // Dark titanium
 
-// Glassmorphism on Dark Backgrounds
-val GlassMilkyWhite = Color(0x1F334155)
-val GlassMilkyCard = Color(0x261E293B)
-val GlassMilkyElevated = Color(0x33334155)
-val GlassBorder = Color(0x3394A3B8)
+// Frosted Glassmorphism for Pure White Background
+val GlassMilkyWhite = Color(0xE6FFFFFF)
+val GlassMilkyCard = Color(0xF2FFFFFF)
+val GlassMilkyElevated = Color(0xFAFFFFFF)
+val GlassBorder = Color(0x2E94A3B8)
 val GlassBorderSubtle = Color(0x1F64748B)
-val GlassHighlight = Color(0x26FFFFFF)
-val GlassShadow = Color(0x80000000)
+val GlassHighlight = Color(0x80FFFFFF)
+val GlassShadow = Color(0x140F172A)
 
-// Crisp Text Colors (re-aliased for dark UI)
-val TextGraphite = Color(0xFFF8FAFC)
-val TextCharcoal = Color(0xFFE2E8F0)
-val TextSlate = Color(0xFFCBD5E1)
-val TextMuted = Color(0xFF94A3B8)
+// Crisp Text Colors
+val TextGraphite = Color(0xFF0F172A)
+val TextCharcoal = Color(0xFF1E293B)
+val TextSlate = Color(0xFF334155)
+val TextMuted = Color(0xFF64748B)
 
-// Legacy compatibility for pearl aliases (fallback to sleek dark/pure black)
-val PearlWhitePure = Color(0xFF000000)
-val PearlWhite = Color(0xFF000000)
-val PearlWhiteSoft = Color(0xFF0A0D14)
-val PearlWhiteMuted = Color(0xFF11151D)
+// Pearl aliases
+val PearlWhitePure = Color(0xFFFFFFFF)
+val PearlWhite = Color(0xFFFFFFFF)
+val PearlWhiteSoft = Color(0xFFFAFAFA)
+val PearlWhiteMuted = Color(0xFFF1F5F9)
 
-// Floating Particle Accents (Varied 4-8dp dots: silver grey, metallic grey, very light blue, soft white)
-val ParticleSilver = Color(0xFFCBD5E1)
-val ParticleMetallicGrey = Color(0xFF94A3B8)
+// Aesthetic Floating Particle Palette (Visible with depth on Pure White)
+// Pearl silver & platinum grey
+val ParticleSilver = Color(0xFF64748B)
+val ParticleMetallicGrey = Color(0xFF475569)
 val ParticleSoftWhite = Color(0xFFF8FAFC)
-val ParticleLightBlue = Color(0xFFBAE6FD)
-val ParticleIceBlue = Color(0xFF93C5FD)
-val ParticleCyan = Color(0xFF7DD3FC)
-val ParticleViolet = Color(0xFFA78BFA)
-val ParticleTitanium = Color(0xFF64748B)
+
+// Soft icy blue & pastel cyan
+val ParticleLightBlue = Color(0xFF0284C7)
+val ParticleIceBlue = Color(0xFF0EA5E9)
+val ParticleCyan = Color(0xFF38BDF8)
+
+// Lavender & muted violet
+val ParticleLavender = Color(0xFF7C3AED)
+val ParticleViolet = Color(0xFF8B5CF6)
+
+// Pale rose & champagne
+val ParticleRosePink = Color(0xFFE11D48)
+val ParticleChampagne = Color(0xFFD97706)
+val ParticleMint = Color(0xFF0D9488)
+val ParticleTitanium = Color(0xFF334155)
 
 // Pastel particle accents
-val PastelIceBlue = Color(0xFF93C5FD)
-val PastelLavender = Color(0xFFA78BFA)
-val PastelPalePink = Color(0xFFF472B6)
-val PastelCyan = Color(0xFF7DD3FC)
-val PastelSilver = Color(0xFFCBD5E1)
+val PastelIceBlue = Color(0xFF0EA5E9)
+val PastelLavender = Color(0xFF8B5CF6)
+val PastelPalePink = Color(0xFFE11D48)
+val PastelCyan = Color(0xFF0284C7)
+val PastelSilver = Color(0xFF64748B)
 val PastelMist = Color(0xFF94A3B8)
 
-// Status & Indicators (Restrained, elegant)
-val ElectricCyan = Color(0xFF38BDF8)
-val ElectricBlue = Color(0xFF60A5FA)
-val ElectricBlueDeep = Color(0xFF3B82F6)
-val ElectricCyanGlow = Color(0x2638BDF8)
-val ElectricCyanSubtle = Color(0x1438BDF8)
+// Status & Indicators
+val ElectricCyan = Color(0xFF0284C7)
+val ElectricBlue = Color(0xFF2563EB)
+val ElectricBlueDeep = Color(0xFF1D4ED8)
+val ElectricCyanGlow = Color(0x260284C7)
+val ElectricCyanSubtle = Color(0x140284C7)
 
-val CyberViolet = Color(0xFFA855F7)
-val CyberPink = Color(0xFFEC4899)
-val NeonEmerald = Color(0xFF10B981)
-val NeonAmber = Color(0xFFF59E0B)
-val NeonRed = Color(0xFFEF4444)
+val CyberViolet = Color(0xFF7C3AED)
+val CyberPink = Color(0xFFDB2777)
+val NeonEmerald = Color(0xFF059669)
+val NeonAmber = Color(0xFFD97706)
+val NeonRed = Color(0xFFDC2626)

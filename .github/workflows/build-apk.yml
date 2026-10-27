@@ -1,10 +1,20 @@
-name: Build and Publish NEXUS APK
+name: Build and Release NEXUS APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish as official GitHub Release'
+        required: true
+        type: boolean
+        default: true
+      custom_tag:
+        description: 'Release Tag (leave empty to use build.gradle.kts version)'
+        required: false
+        type: string
   push:
     branches:
-      - main
+      - release
     tags:
       - 'v*'
 
@@ -35,23 +45,32 @@ jobs:
         run: |
           VERSION_NAME=$(grep 'versionName = ' app/build.gradle.kts | head -n 1 | cut -d '"' -f 2)
           VERSION_CODE=$(grep 'versionCode = ' app/build.gradle.kts | head -n 1 | awk '{print $3}')
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          
+          if [ -n "${{ inputs.custom_tag }}" ]; then
+            RELEASE_TAG="${{ inputs.custom_tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             RELEASE_TAG="${GITHUB_REF_NAME}"
           else
             RELEASE_TAG="v${VERSION_NAME}"
           fi
+
           echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
           echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
-          echo "Detected version: ${VERSION_NAME} (code: ${VERSION_CODE}), Tag: ${RELEASE_TAG}"
+          echo "Building NEXUS AI ${RELEASE_TAG} (versionCode: ${VERSION_CODE}, versionName: ${VERSION_NAME})"
 
-      - name: Prepare Signing Keystores
+      - name: Run Quality Verification Tests
+        run: |
+          echo "Running unit and logic tests prior to packaging..."
+          gradle :app:testDebugUnitTest
+
+      - name: Configure Persistent Release Signing Key
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASS: ${{ secrets.STORE_PASSWORD }}
           KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: |
-          # Ensure debug keystore is present
+          # Ensure debug keystore is present for local test tasks
           if [ ! -f "debug.keystore" ]; then
             keytool -genkeypair -v \
               -keystore debug.keystore \
@@ -64,33 +83,39 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          # Prepare release keystore: decode secret if present, or generate stable default
-          RELEASE_PASS="${STORE_PASS:-nexus_release_key_2026}"
+          # Prepare persistent release keystore
           if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
-          elif [ ! -f "my-upload-key.jks" ]; then
+            echo "Decoding persistent release signing key from GitHub Secret..."
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "${GITHUB_WORKSPACE}/my-upload-key.jks"
+          elif [ -f "my-upload-key.jks" ]; then
+            echo "Using existing repository release keystore (my-upload-key.jks)."
+          else
+            echo "::warning::RELEASE_KEYSTORE_BASE64 secret is not defined in GitHub repository secrets."
+            echo "::warning::Generating a deterministic stable fallback keystore. For production release continuity,"
+            echo "::warning::please store your permanent keystore base64 in GitHub Secrets as RELEASE_KEYSTORE_BASE64."
+            
+            DEFAULT_PASS="${STORE_PASS:-nexus_release_key_2026}"
             keytool -genkeypair -v \
-              -keystore my-upload-key.jks \
-              -storepass "$RELEASE_PASS" \
+              -keystore "${GITHUB_WORKSPACE}/my-upload-key.jks" \
+              -storepass "$DEFAULT_PASS" \
               -alias upload \
-              -keypass "${KEY_PASS:-$RELEASE_PASS}" \
+              -keypass "${KEY_PASS:-$DEFAULT_PASS}" \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
               -dname "CN=NEXUS AI Release,O=NEXUS,C=US"
           fi
 
-      - name: Build APK with Gradle
+      - name: Build Release APK with Gradle
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'nexus_release_key_2026' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'nexus_release_key_2026' }}
         run: |
-          # Try assembleRelease first, fallback to assembleDebug if release signing fails
           if gradle :app:assembleRelease; then
-            echo "Release build succeeded."
+            echo "assembleRelease succeeded."
           else
-            echo "Release build failed, falling back to assembleDebug..."
+            echo "assembleRelease failed; compiling assembleDebug fallback..."
             gradle :app:assembleDebug
           fi
 
@@ -113,23 +138,24 @@ jobs:
           path: release-assets/*.apk
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Publish Official GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/release' || github.event.inputs.publish_release == 'true'
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "NEXUS AI ${{ env.RELEASE_TAG }}"
           body: |
-            ## NEXUS AI ${{ env.RELEASE_TAG }}
+            ## NEXUS AI Release ${{ env.RELEASE_TAG }}
             
-            ### Highlights
-            - Official In-App APK Update System with GitHub Releases API integration
-            - Live generative Gemini conversational AI model with dynamic parameters
-            - Bilingual Hindi and English voice recognition and neural Text-To-Speech engine
-            - Ultra-responsive 120Hz 3D particle core and organic ocean wave background
+            ### Highlights & Visual Upgrades
+            - **Pure White Background**: Solid static pure white base (#FFFFFF) with zero color tinting.
+            - **Subtle Frosted-Glass Fluid Waves**: Layered organic wave currents and light refraction behind foreground particles.
+            - **Colorful 3D Floating Dots**: Multi-depth 3D floating particles featuring pearl silver, platinum grey, soft icy blue, pastel cyan, lavender, muted violet, pale rose, and subtle champagne with specular highlights and ambient drop shadows.
+            - **Infinite Non-Repeating Animation**: Multidirectional, diagonal, lateral, curved motion with evolving noise fields.
+            - **Automatic In-App APK Updater**: Seamless detection of new GitHub releases, download progress tracking, package verification, and official Android package installation.
             
             ### Download & Installation
-            Download the attached `nexus-ai-${{ env.RELEASE_TAG }}.apk` asset below and open on your Android device (Android 7.0+).
+            Download the attached `nexus-ai-${{ env.RELEASE_TAG }}.apk` asset below and open it directly on your Android device (Android 7.0+).
           files: release-assets/*.apk
           draft: false
           prerelease: false

@@ -98,6 +98,7 @@ import com.example.ui.theme.NexusSurfaceDark
 import com.example.ui.theme.NexusSurfaceElevated
 import com.example.ui.theme.NexusTitanium
 import com.example.BuildConfig
+import com.example.ui.components.NexusOceanParticleBackground
 import com.example.data.update.UpdateState
 import com.example.viewmodel.ConnectionState
 import com.example.viewmodel.NexusViewModel
@@ -134,17 +135,26 @@ fun SettingsScreen(
     val personas = listOf("Futuristic AI", "Jarvis Companion", "Concise Professional", "Creative Thinker")
     var personaDropdownExpanded by remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NexusPureBlack)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color.White)
     ) {
+        NexusOceanParticleBackground(
+            modifier = Modifier.fillMaxSize(),
+            dimAroundCenter = false
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // Top Header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1136,4 +1146,5 @@ fun SettingsScreen(
             }
         }
     }
+}
 }

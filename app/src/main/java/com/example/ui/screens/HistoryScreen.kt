@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Conversation
 import com.example.ui.theme.CyberViolet
+import com.example.ui.components.NexusOceanParticleBackground
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricCyan
 import com.example.ui.theme.NeonEmerald
@@ -104,6 +105,11 @@ fun HistoryScreen(
             .fillMaxSize()
             .background(NexusPureBlack)
     ) {
+        NexusOceanParticleBackground(
+            modifier = Modifier.fillMaxSize(),
+            dimAroundCenter = false
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()

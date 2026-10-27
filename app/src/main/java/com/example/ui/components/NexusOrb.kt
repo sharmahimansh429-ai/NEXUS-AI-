@@ -412,10 +412,9 @@ private fun DrawScope.drawVolumetricAura(
     drawCircle(
         brush = Brush.radialGradient(
             colorStops = arrayOf(
-                0.0f to ColorPearlWhite.copy(alpha = 0.16f + typingFactor * 0.10f),
-                0.22f to auraColor.copy(alpha = 0.12f),
-                0.55f to auraColor.copy(alpha = 0.035f),
-                0.80f to Color(0xFF0F172A).copy(alpha = 0.015f),
+                0.0f to auraColor.copy(alpha = 0.09f + typingFactor * 0.06f),
+                0.32f to auraColor.copy(alpha = 0.045f),
+                0.68f to Color(0xFFCBD5E1).copy(alpha = 0.018f),
                 1.0f to Color.Transparent
             ),
             center = center,
@@ -643,6 +642,15 @@ private fun DrawScope.draw3DFineParticleCloud(
             else -> {
                 if (specular > 0.24f) ColorPearlWhite else palette[p.colorIndex]
             }
+        }
+
+        // Micro-drop shadow for 3D depth over white
+        if (depthNorm > 0.40f) {
+            drawCircle(
+                color = Color(0xFF475569).copy(alpha = (0.10f * depthNorm * baseAlpha).coerceIn(0.02f, 0.18f)),
+                radius = dotRadius * 1.15f,
+                center = Offset(screenX + 0.6f, screenY + 0.8f)
+            )
         }
 
         // Draw particle body

@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.NexusMemory
 import com.example.ui.components.CyberChip
+import com.example.ui.components.NexusOceanParticleBackground
 import com.example.ui.theme.CyberViolet
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricCyan
@@ -117,6 +118,11 @@ fun MemoriesScreen(
             .fillMaxSize()
             .background(NexusPureBlack)
     ) {
+        NexusOceanParticleBackground(
+            modifier = Modifier.fillMaxSize(),
+            dimAroundCenter = false
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()

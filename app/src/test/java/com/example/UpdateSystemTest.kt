@@ -22,13 +22,21 @@ class UpdateSystemTest {
         // v1.2-beta is newer than 1.1
         assertTrue(VersionComparator.isRemoteNewer("v1.2-beta", "1.1"))
 
+        // v1.2 is newer than 1.1
+        assertTrue(VersionComparator.isRemoteNewer("v1.2", "1.1"))
+        assertTrue(VersionComparator.isRemoteNewer("v1.1.1", "1.1"))
+        assertTrue(VersionComparator.isRemoteNewer("v2.0", "1.1"))
+
         // Same version is not newer
         assertFalse(VersionComparator.isRemoteNewer("1.0", "1.0"))
         assertFalse(VersionComparator.isRemoteNewer("v1.0", "1.0"))
+        assertFalse(VersionComparator.isRemoteNewer("v1.1", "1.1"))
+        assertFalse(VersionComparator.isRemoteNewer("1.1", "1.1"))
         assertFalse(VersionComparator.isRemoteNewer("v1.0.0", "1.0.0"))
 
         // Older version is not newer
         assertFalse(VersionComparator.isRemoteNewer("0.9", "1.0"))
+        assertFalse(VersionComparator.isRemoteNewer("1.0", "1.1"))
         assertFalse(VersionComparator.isRemoteNewer("v0.9.5", "1.0"))
     }
 
