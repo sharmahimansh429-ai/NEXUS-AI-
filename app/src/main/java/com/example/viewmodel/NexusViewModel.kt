@@ -76,8 +76,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     val ttsSpeed = MutableStateFlow(repository.getTtsSpeed())
     val ttsPitch = MutableStateFlow(repository.getTtsPitch())
 
-    // Accurate Connection State (Tested via Live API Ping)
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Checking)
+    // Connection State (On-Device Virtual Engine)
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Online("Nexus Virtual Brain"))
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     private var lastPrompt: String? = null

@@ -70,6 +70,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -78,10 +80,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatMessage
-import com.example.ui.components.ApiKeyWarningBanner
 import com.example.ui.components.NexusConnectionIndicator
+import com.example.ui.components.NexusOceanParticleBackground
 import com.example.ui.components.NexusOrb
 import com.example.ui.components.OrbState
+import com.example.ui.theme.GlassBorder
+import com.example.ui.theme.GlassBorderSubtle
+import com.example.ui.theme.GlassHighlight
+import com.example.ui.theme.GlassMilkyCard
+import com.example.ui.theme.GlassMilkyElevated
+import com.example.ui.theme.GlassMilkyWhite
+import com.example.ui.theme.GlassShadow
 import com.example.ui.theme.NeonRed
 import com.example.ui.theme.NexusBorderHairline
 import com.example.ui.theme.NexusCardDark
@@ -94,7 +103,14 @@ import com.example.ui.theme.NexusSilverMuted
 import com.example.ui.theme.NexusSurfaceDark
 import com.example.ui.theme.NexusSurfaceElevated
 import com.example.ui.theme.NexusTitanium
+import com.example.ui.theme.PastelIceBlue
 import com.example.ui.theme.ParticleCyan
+import com.example.ui.theme.PearlWhite
+import com.example.ui.theme.PearlWhitePure
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextGraphite
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextSlate
 import com.example.viewmodel.ConnectionState
 import com.example.viewmodel.NexusViewModel
 import java.text.SimpleDateFormat
@@ -145,18 +161,28 @@ fun ChatScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NexusPureBlack)
-            .imePadding()
+            .background(PearlWhite)
     ) {
-        // Clean Minimal Header
+        // Full-screen, continuously animated ocean-like wave surface with ultra-fine dot-matrix particles
+        NexusOceanParticleBackground(
+            modifier = Modifier.fillMaxSize(),
+            dimAroundCenter = messages.isEmpty()
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+        ) {
+        // Clean Minimal Header with Frosted Glass Touch
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -164,20 +190,23 @@ fun ChatScreen(
                 IconButton(
                     onClick = onOpenMenu,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(42.dp)
+                        .shadow(elevation = 2.dp, shape = CircleShape, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.03f))
+                        .background(GlassMilkyWhite, CircleShape)
+                        .border(1.dp, GlassBorder, CircleShape)
                         .testTag("menu_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "Menu",
-                        tint = NexusSilverBright,
-                        modifier = Modifier.size(22.dp)
+                        tint = TextGraphite,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "NEXUS",
-                    color = NexusSilverBright,
+                    color = TextGraphite,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -191,8 +220,9 @@ fun ChatScreen(
                         onClick = { viewModel.stopSpeaking() },
                         modifier = Modifier
                             .size(36.dp)
-                            .background(NexusSurfaceDark, CircleShape)
-                            .border(1.dp, NeonRed, CircleShape)
+                            .shadow(elevation = 2.dp, shape = CircleShape, spotColor = GlassShadow)
+                            .background(Color(0xFFFEF2F2), CircleShape)
+                            .border(1.dp, NeonRed.copy(alpha = 0.6f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Stop,
@@ -201,10 +231,10 @@ fun ChatScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                 }
 
-                // Small connection indicator light: green when connected, red when offline, grey while checking
+                // Frosted glass status indicator container with glowing status light
                 NexusConnectionIndicator(
                     state = connectionState,
                     onIndicatorClick = {
@@ -217,10 +247,7 @@ fun ChatScreen(
             }
         }
 
-        // Api Key Alert if missing
-        if (!isApiKeyConfigured || connectionState is ConnectionState.NoKey) {
-            ApiKeyWarningBanner(onConfigureClick = onNavigateToSettings)
-        }
+        // Virtual Brain operates completely standalone without external keys
 
         // Retry banner if the last message was an error
         val lastMessage = messages.lastOrNull()
@@ -229,9 +256,10 @@ fun ChatScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                color = Color(0xFF1A1114),
-                shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.5f))
+                color = Color(0xFFFEF2F2),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.4f)),
+                shadowElevation = 2.dp
             ) {
                 Row(
                     modifier = Modifier
@@ -242,13 +270,13 @@ fun ChatScreen(
                 ) {
                     Text(
                         text = "Last transmission failed. Tap to retry.",
-                        color = Color(0xFFFFB3B8),
+                        color = Color(0xFF991B1B),
                         fontSize = 12.sp
                     )
                     OutlinedButton(
                         onClick = { viewModel.retryLastMessage() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NexusTitanium),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextGraphite),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3394A3B8))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
@@ -295,6 +323,7 @@ fun ChatScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(elevation = 3.dp, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.04f))
                             .clickable {
                                 if (orbState == OrbState.LISTENING) {
                                     viewModel.stopListening()
@@ -302,8 +331,8 @@ fun ChatScreen(
                                     showMicRationale = true
                                 }
                             },
-                        color = NexusCharcoal.copy(alpha = 0.95f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+                        color = GlassMilkyWhite,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
                     ) {
                         Row(
                             modifier = Modifier
@@ -319,7 +348,7 @@ fun ChatScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "NEXUS",
-                                color = NexusSilverBright,
+                                color = TextGraphite,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
@@ -327,12 +356,16 @@ fun ChatScreen(
                             )
                             IconButton(
                                 onClick = { viewModel.createNewSession() },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .shadow(elevation = 2.dp, shape = CircleShape, spotColor = GlassShadow)
+                                    .background(GlassMilkyCard, CircleShape)
+                                    .border(1.dp, GlassBorder, CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = "New Session",
-                                    tint = NexusTitanium,
+                                    tint = TextGraphite,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -367,23 +400,24 @@ fun ChatScreen(
             }
         }
 
-        // Bottom input bar with navigation bar inset padding
+        // Frosted Glass bottom input container with navigation bar inset padding
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding(),
-            color = NexusPureBlack,
-            border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
+                .navigationBarsPadding()
+                .shadow(elevation = 10.dp, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.05f)),
+            color = GlassMilkyWhite.copy(alpha = 0.85f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Voice Microphone button
+                // Frosted Glass Microphone button
                 val isListening = orbState == OrbState.LISTENING
-                FloatingActionButton(
+                Surface(
                     onClick = {
                         if (isListening) {
                             viewModel.stopListening()
@@ -393,72 +427,132 @@ fun ChatScreen(
                     },
                     modifier = Modifier
                         .size(46.dp)
-                        .border(1.dp, if (isListening) ParticleCyan else NexusBorderHairline, CircleShape)
+                        .shadow(elevation = 4.dp, shape = CircleShape, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.04f))
                         .testTag("mic_button"),
                     shape = CircleShape,
-                    containerColor = if (isListening) ParticleCyan.copy(alpha = 0.25f) else NexusSurfaceDark,
-                    contentColor = if (isListening) ParticleCyan else NexusSilverBright
+                    color = if (isListening) Color(0xD9E0F2FE) else GlassMilkyWhite,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isListening) PastelIceBlue else GlassBorder
+                    )
                 ) {
-                    Icon(
-                        imageVector = if (isListening) Icons.Default.GraphicEq else Icons.Default.Mic,
-                        contentDescription = if (isListening) "Stop Listening" else "Start Voice Input",
-                        modifier = Modifier.size(22.dp)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Subtle top glass reflection highlight
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(GlassHighlight, Color.Transparent)
+                                    ),
+                                    CircleShape
+                                )
+                        )
+                        Icon(
+                            imageVector = if (isListening) Icons.Default.GraphicEq else Icons.Default.Mic,
+                            contentDescription = if (isListening) "Stop Listening" else "Start Voice Input",
+                            tint = if (isListening) Color(0xFF0284C7) else TextCharcoal,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // Frosted Glass Message Input Container
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(24.dp), spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.04f))
+                        .background(GlassMilkyWhite, RoundedCornerShape(24.dp))
+                        .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
+                ) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { viewModel.inputText.value = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("chat_input_field"),
+                        placeholder = {
+                            Text(
+                                "Message NEXUS...",
+                                color = TextMuted,
+                                fontSize = 14.sp
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextGraphite,
+                            unfocusedTextColor = TextGraphite,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        maxLines = 4
                     )
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // Text Input
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { viewModel.inputText.value = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("chat_input_field"),
-                    placeholder = {
-                        Text(
-                            "Message NEXUS...",
-                            color = NexusSilverMuted,
-                            fontSize = 14.sp
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = NexusSilverBright,
-                        unfocusedTextColor = NexusSilverBright,
-                        focusedBorderColor = NexusSilver,
-                        unfocusedBorderColor = NexusBorderHairline,
-                        focusedContainerColor = NexusCardDark,
-                        unfocusedContainerColor = NexusCardDark
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    maxLines = 4
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                // Send Button
-                FloatingActionButton(
+                // Frosted Glass Send Button
+                Surface(
                     onClick = { viewModel.sendMessage() },
                     modifier = Modifier
                         .size(46.dp)
-                        .border(1.dp, NexusBorderHairline, CircleShape)
+                        .shadow(elevation = 4.dp, shape = CircleShape, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.04f))
                         .testTag("send_button"),
                     shape = CircleShape,
-                    containerColor = if (inputText.isNotBlank() && !isGenerating) NexusTitanium else NexusSurfaceDark,
-                    contentColor = if (inputText.isNotBlank() && !isGenerating) NexusDeepBlack else NexusSilverMuted
+                    color = if (inputText.isNotBlank() && !isGenerating) Color(0xEE0F172A) else GlassMilkyCard,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (inputText.isNotBlank() && !isGenerating) GlassBorder else GlassBorderSubtle
+                    )
                 ) {
-                    if (isGenerating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = NexusTitanium,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send Message",
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (inputText.isNotBlank() && !isGenerating) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)
+                                        ),
+                                        CircleShape
+                                    )
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(GlassHighlight, Color.Transparent)
+                                        ),
+                                        CircleShape
+                                    )
+                            )
+                        }
+
+                        if (isGenerating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = TextGraphite,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send Message",
+                                tint = if (inputText.isNotBlank() && !isGenerating) PearlWhitePure else TextMuted,
+                            )
+                        }
                     }
                 }
             }
@@ -508,6 +602,7 @@ fun ChatScreen(
         )
     }
 }
+}
 
 @Composable
 private fun ChatMessageCard(
@@ -529,15 +624,16 @@ private fun ChatMessageCard(
         if (!isUser) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
+                    .shadow(elevation = 2.dp, shape = CircleShape, spotColor = GlassShadow, ambientColor = GlassShadow.copy(alpha = 0.04f))
                     .clip(CircleShape)
                     .background(
-                        if (message.isError) NeonRed.copy(alpha = 0.2f)
-                        else NexusSurfaceDark
+                        if (message.isError) Color(0xFFFEE2E2)
+                        else GlassMilkyWhite
                     )
                     .border(
                         1.dp,
-                        if (message.isError) NeonRed else NexusBorderHairline,
+                        if (message.isError) NeonRed else GlassBorder,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -545,8 +641,8 @@ private fun ChatMessageCard(
                 Icon(
                     imageVector = Icons.Default.SmartToy,
                     contentDescription = null,
-                    tint = if (message.isError) NeonRed else NexusTitanium,
-                    modifier = Modifier.size(16.dp)
+                    tint = if (message.isError) NeonRed else TextGraphite,
+                    modifier = Modifier.size(17.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -555,6 +651,17 @@ private fun ChatMessageCard(
         Surface(
             modifier = Modifier
                 .widthIn(max = 310.dp)
+                .shadow(
+                    elevation = 3.dp,
+                    shape = RoundedCornerShape(
+                        topStart = 16.dp,
+                        topEnd = 16.dp,
+                        bottomStart = if (isUser) 16.dp else 4.dp,
+                        bottomEnd = if (isUser) 4.dp else 16.dp
+                    ),
+                    spotColor = GlassShadow,
+                    ambientColor = GlassShadow.copy(alpha = 0.04f)
+                )
                 .testTag(if (isUser) "user_message_bubble" else "nexus_message_bubble"),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
@@ -562,14 +669,14 @@ private fun ChatMessageCard(
                 bottomStart = if (isUser) 16.dp else 4.dp,
                 bottomEnd = if (isUser) 4.dp else 16.dp
             ),
-            color = if (isUser) NexusSurfaceDark
-            else if (message.isError) Color(0xFF1E1014)
-            else NexusCardDark,
+            color = if (isUser) Color(0xD9EBF2FC)
+            else if (message.isError) Color(0xFFFEF2F2)
+            else GlassMilkyWhite,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (isUser) NexusBorderHairline
-                else if (message.isError) NeonRed.copy(alpha = 0.5f)
-                else NexusBorderHairline
+                if (isUser) Color(0x6694A3B8)
+                else if (message.isError) NeonRed.copy(alpha = 0.45f)
+                else GlassBorder
             )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -581,9 +688,9 @@ private fun ChatMessageCard(
                 ) {
                     Text(
                         text = if (isUser) "YOU" else if (message.isError) "SYSTEM ALERT" else "NEXUS",
-                        color = if (isUser) NexusTitanium
+                        color = if (isUser) TextSlate
                         else if (message.isError) NeonRed
-                        else NexusSilverBright,
+                        else TextGraphite,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -591,7 +698,7 @@ private fun ChatMessageCard(
                     )
                     Text(
                         text = timeString,
-                        color = NexusSilverMuted,
+                        color = TextMuted,
                         fontSize = 10.sp
                     )
                 }
@@ -601,7 +708,7 @@ private fun ChatMessageCard(
                 SelectionContainer {
                     Text(
                         text = message.text,
-                        color = if (message.isError) Color(0xFFFFB3B8) else NexusSilverBright,
+                        color = if (message.isError) Color(0xFF991B1B) else TextGraphite,
                         fontSize = 14.sp,
                         lineHeight = 20.sp
                     )
@@ -616,8 +723,8 @@ private fun ChatMessageCard(
                     ) {
                         OutlinedButton(
                             onClick = onRetryClick,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NexusTitanium),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.6f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextGraphite),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.5f)),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
@@ -626,10 +733,10 @@ private fun ChatMessageCard(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = null,
                                 modifier = Modifier.size(13.dp),
-                                tint = NexusTitanium
+                                tint = TextGraphite
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Retry", fontSize = 11.5.sp, color = NexusTitanium)
+                            Text("Retry", fontSize = 11.5.sp, color = TextGraphite)
                         }
                     }
                 }
@@ -654,7 +761,7 @@ private fun ChatMessageCard(
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "Copy message",
-                                tint = NexusSilver,
+                                tint = TextSlate,
                                 modifier = Modifier.size(15.dp)
                             )
                         }
@@ -666,14 +773,14 @@ private fun ChatMessageCard(
                             modifier = Modifier
                                 .size(28.dp)
                                 .background(
-                                    if (isSpeaking) NexusSurfaceElevated else Color.Transparent,
+                                    if (isSpeaking) Color(0x337FA7C9) else Color.Transparent,
                                     CircleShape
                                 )
                         ) {
                             Icon(
                                 imageVector = if (isSpeaking) Icons.Default.Stop else Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = if (isSpeaking) "Stop Speech" else "Read Aloud",
-                                tint = if (isSpeaking) NexusSilverBright else NexusSilver,
+                                tint = if (isSpeaking) PastelIceBlue else TextSlate,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -688,7 +795,7 @@ private fun ChatMessageCard(
 private fun NexusThinkingBubble() {
     val transition = rememberInfiniteTransition(label = "thinking")
     val alpha by transition.animateFloat(
-        initialValue = 0.35f,
+        initialValue = 0.40f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
             animation = tween(700),
@@ -703,8 +810,9 @@ private fun NexusThinkingBubble() {
     ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = NexusCardDark,
-            border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline.copy(alpha = alpha))
+            color = GlassMilkyWhite,
+            shadowElevation = 3.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder.copy(alpha = alpha))
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -712,13 +820,13 @@ private fun NexusThinkingBubble() {
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
-                    color = ParticleCyan,
+                    color = PastelIceBlue,
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "NEXUS synthesizing response...",
-                    color = NexusSilver,
+                    color = TextSlate,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace
                 )

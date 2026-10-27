@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,6 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.GlassBorder
+import com.example.ui.theme.GlassHighlight
+import com.example.ui.theme.GlassMilkyCard
+import com.example.ui.theme.GlassMilkyWhite
+import com.example.ui.theme.GlassShadow
 import com.example.ui.theme.NeonEmerald
 import com.example.ui.theme.NeonRed
 import com.example.ui.theme.NexusBorderHairline
@@ -92,9 +100,30 @@ fun CyberStatusBadge(
 }
 
 /**
- * Minimalist connection indicator light.
- * Green when connected, Red when disconnected/no key, Grey while checking.
- * No text labels, strictly a subtle luminous status light.
+ * Frosted glass modifier providing translucent milky surface, reflection highlight,
+ * subtle border, and soft shadow.
+ */
+fun Modifier.frostedGlass(
+    shape: Shape = RoundedCornerShape(16.dp),
+    backgroundColor: Color = GlassMilkyCard,
+    borderColor: Color = GlassBorder,
+    borderWidth: Dp = 1.dp,
+    elevation: Dp = 6.dp
+) = this
+    .shadow(
+        elevation = elevation,
+        shape = shape,
+        spotColor = GlassShadow,
+        ambientColor = GlassShadow.copy(alpha = 0.05f)
+    )
+    .background(backgroundColor, shape)
+    .border(width = borderWidth, color = borderColor, shape = shape)
+    .clip(shape)
+
+/**
+ * Minimalist frosted glass status indicator container.
+ * Translucent milky-white container with subtle reflection, thin silver-white border,
+ * and a glowing status indicator dot (Green = active, Red = alert, Grey = checking).
  */
 @Composable
 fun NexusConnectionIndicator(
@@ -125,25 +154,49 @@ fun NexusConnectionIndicator(
         1.0f
     }
 
-    Box(
+    Surface(
         modifier = modifier
-            .size(48.dp)
-            .clip(CircleShape)
+            .size(38.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                spotColor = GlassShadow,
+                ambientColor = GlassShadow.copy(alpha = 0.04f)
+            )
             .clickable(onClick = onIndicatorClick),
-        contentAlignment = Alignment.Center
+        shape = CircleShape,
+        color = GlassMilkyWhite,
+        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
     ) {
-        // Outer soft glow halo
         Box(
-            modifier = Modifier
-                .size(15.dp)
-                .background(indicatorColor.copy(alpha = 0.22f * checkingAlpha), CircleShape)
-        )
-        // Core luminous point
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .background(indicatorColor.copy(alpha = checkingAlpha), CircleShape)
-        )
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Subtle glass reflection highlight along top edge
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(GlassHighlight, Color.Transparent)
+                        ),
+                        CircleShape
+                    )
+            )
+
+            // Outer soft glow halo
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(indicatorColor.copy(alpha = 0.22f * checkingAlpha), CircleShape)
+            )
+            // Core luminous point
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(indicatorColor.copy(alpha = checkingAlpha), CircleShape)
+            )
+        }
     }
 }
 

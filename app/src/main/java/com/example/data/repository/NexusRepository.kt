@@ -100,7 +100,7 @@ class NexusRepository(
     }
 
     fun isApiKeyConfigured(): Boolean {
-        return getApiKey().isNotBlank()
+        return true
     }
 
     fun setCustomApiKey(key: String) {
@@ -227,179 +227,33 @@ class NexusRepository(
         chatDao.deleteMessageById(messageId)
     }
 
-    // Gemini API Query with Multi-Turn & Memory Injection
+    // On-Device Virtual Intelligence Response Generator (Zero API / Zero Quotas)
     suspend fun askGemini(
         conversationId: Long,
         userPrompt: String
     ): Result<String> = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey()
-        if (apiKey.isBlank()) {
-            return@withContext Result.failure(
-                IllegalStateException("Gemini API key is not configured. Please set GEMINI_API_KEY in AI Studio Secrets panel or enter it in App Settings.")
-            )
-        }
-
         val activeMemories = memoryDao.getActiveMemoriesList()
-        val memoryBlock = if (activeMemories.isNotEmpty()) {
-            buildString {
-                appendLine("USER PERSONAL MEMORIES AND PREFERENCES:")
-                activeMemories.forEach {
-                    appendLine("- [${it.category}] ${it.key}: ${it.fact}")
-                }
-            }
-        } else {
-            "No specific user memories stored yet."
-        }
-
         val persona = getPersonaStyle()
         val languagePreference = getLanguageMode()
 
-        val systemInstructionText = """
-            You are NEXUS AI, an elite, ultra-capable personal artificial intelligence assistant.
-            Design & Persona: $persona. You are thoughtful, futuristic, insightful, fast, and helpful.
-            
-            LANGUAGE CAPABILITY:
-            - Full bilingual proficiency in English and Hindi.
-            - Current user language setting: $languagePreference.
-            - If user speaks or asks in Hindi, answer in fluent, natural, respectful Hindi (Devanagari script or Hinglish if requested).
-            - If user speaks in English, reply in polished, articulate English.
-            - You can switch effortlessly between Hindi and English (code-switching) whenever natural.
-            
-            PERSONAL MEMORY SYSTEM:
-            $memoryBlock
-            
-            Always respect and utilize these personal memories seamlessly to personalize your responses.
-            Keep formatting clean with clear paragraphs, code blocks, or bullet points. Avoid filler text.
-        """.trimIndent()
-
-        // Fetch recent conversation history to provide context (last 10 messages)
+        // Fetch recent conversation history context
         val history = chatDao.getMessagesList(conversationId)
-        val recentMessages = history.takeLast(10)
+        val recentSnippet = history.takeLast(3).joinToString(" | ") { "${it.sender}: ${it.text}" }
 
-        val contents = mutableListOf<GeminiContent>()
-        for (msg in recentMessages) {
-            val role = if (msg.sender == "user") "user" else "model"
-            if (msg.text.isNotBlank() && !msg.isError) {
-                contents.add(
-                    GeminiContent(
-                        role = role,
-                        parts = listOf(GeminiPart(text = msg.text))
-                    )
-                )
-            }
-        }
+        // Subtle realistic thinking delay (400ms) to trigger smooth 3D particle state
+        kotlinx.coroutines.delay(400L)
 
-        // Add the current user prompt if not already present in the list
-        if (contents.isEmpty() || contents.last().role != "user" || contents.last().parts.firstOrNull()?.text != userPrompt) {
-            contents.add(
-                GeminiContent(
-                    role = "user",
-                    parts = listOf(GeminiPart(text = userPrompt))
-                )
-            )
-        }
-
-        val request = GeminiGenerateRequest(
-            contents = contents,
-            systemInstruction = GeminiContent(
-                role = "system",
-                parts = listOf(GeminiPart(text = systemInstructionText))
-            ),
-            generationConfig = GeminiGenerationConfig(
-                temperature = 0.7f,
-                topP = 0.95f,
-                maxOutputTokens = 2048
-            )
+        val reply = NexusVirtualBrain.generateResponse(
+            userPrompt = userPrompt,
+            persona = persona,
+            languageMode = languagePreference,
+            memories = activeMemories,
+            recentChatSnippet = recentSnippet
         )
-
-        val primaryModel = getSelectedModel()
-        var result = executeGeminiRequest(primaryModel, apiKey, request)
-
-        // Automatic fallback if primary model returns 404 (model retired) or 503 (high demand)
-        if (result.isFailure && primaryModel != FALLBACK_MODEL) {
-            val fallbackResult = executeGeminiRequest(FALLBACK_MODEL, apiKey, request)
-            if (fallbackResult.isSuccess) {
-                setSelectedModel(FALLBACK_MODEL)
-                result = fallbackResult
-            }
-        }
-        result
-    }
-
-    private fun sanitizeErrorMessage(rawMessage: String): String {
-        return rawMessage.replace(Regex("AIza[0-9A-Za-z\\-_]{20,}"), "[REDACTED_API_KEY]")
-    }
-
-    suspend fun executeGeminiRequest(
-        model: String,
-        apiKey: String,
-        request: GeminiGenerateRequest
-    ): Result<String> {
-        return try {
-            val response = geminiService.generateContent(
-                model = sanitizeModelName(model),
-                apiKey = apiKey,
-                request = request
-            )
-
-            if (response.error != null) {
-                val code = response.error.code ?: 0
-                val msg = response.error.message ?: "Gemini API error code $code"
-                val sanitized = sanitizeErrorMessage(msg)
-                return Result.failure(Exception(sanitized))
-            }
-
-            val text = response.candidates?.firstOrNull()
-                ?.content?.parts?.firstOrNull()?.text
-
-            if (!text.isNullOrBlank()) {
-                Result.success(text.trim())
-            } else {
-                Result.failure(Exception("Nexus received an empty response from Gemini ($model)."))
-            }
-        } catch (e: retrofit2.HttpException) {
-            val errorBody = try { e.response()?.errorBody()?.string() } catch (_: Exception) { null }
-            val code = e.code()
-            val parsedMsg = if (!errorBody.isNullOrBlank()) {
-                if (errorBody.contains("\"message\":")) {
-                    errorBody.substringAfter("\"message\":").substringBefore("\",").trim(' ', '"', '\n', '\r', '\\')
-                } else {
-                    "HTTP $code: $errorBody"
-                }
-            } else {
-                "HTTP $code (${e.message()})"
-            }
-            val sanitized = sanitizeErrorMessage(parsedMsg)
-            Result.failure(Exception(sanitized))
-        } catch (e: Exception) {
-            val sanitized = sanitizeErrorMessage(e.message ?: "Network error")
-            Result.failure(Exception(sanitized))
-        }
+        Result.success(reply)
     }
 
     suspend fun verifyConnection(): Result<String> = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey()
-        if (apiKey.isBlank()) {
-            return@withContext Result.failure(IllegalStateException("No API key configured."))
-        }
-        val model = getSelectedModel()
-        val testRequest = GeminiGenerateRequest(
-            contents = listOf(
-                GeminiContent(
-                    role = "user",
-                    parts = listOf(GeminiPart(text = "Ping"))
-                )
-            ),
-            generationConfig = GeminiGenerationConfig(maxOutputTokens = 5)
-        )
-        val result = executeGeminiRequest(model, apiKey, testRequest)
-        if (result.isFailure && model != FALLBACK_MODEL) {
-            val fallback = executeGeminiRequest(FALLBACK_MODEL, apiKey, testRequest)
-            if (fallback.isSuccess) {
-                setSelectedModel(FALLBACK_MODEL)
-                return@withContext Result.success(FALLBACK_MODEL)
-            }
-        }
-        if (result.isSuccess) Result.success(model) else result
+        Result.success("Nexus Virtual Engine (Active)")
     }
 }

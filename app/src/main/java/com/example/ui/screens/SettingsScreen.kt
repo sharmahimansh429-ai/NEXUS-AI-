@@ -183,15 +183,12 @@ fun SettingsScreen(
             }
         }
 
-        // Section 1: API Key & Intelligence Provider
+        // Section 1: Standalone On-Device Virtual Intelligence
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = NexusCardDark,
             shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (isApiKeyConfigured) NexusBorderHairline else NeonRed.copy(alpha = 0.5f)
-            )
+            border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -201,40 +198,27 @@ fun SettingsScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Key,
+                            imageVector = Icons.Default.SmartToy,
                             contentDescription = null,
-                            tint = if (isApiKeyConfigured) NexusTitanium else NeonRed,
+                            tint = NexusTitanium,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Gemini API Connection",
+                            text = "NEXUS Virtual Brain",
                             color = NexusSilverBright,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    val statusText = when (val conn = connectionState) {
-                        is ConnectionState.Checking -> "CHECKING..."
-                        is ConnectionState.NoKey -> "UNCONFIGURED"
-                        is ConnectionState.Error -> "DISCONNECTED"
-                        is ConnectionState.Online -> "VERIFIED ONLINE"
-                    }
-                    val statusColor = when (connectionState) {
-                        is ConnectionState.Checking -> NeonAmber
-                        is ConnectionState.NoKey -> NeonRed
-                        is ConnectionState.Error -> NeonRed
-                        is ConnectionState.Online -> NeonEmerald
-                    }
-
                     Surface(
-                        color = statusColor.copy(alpha = 0.15f),
+                        color = NeonEmerald.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text(
-                            text = statusText,
-                            color = statusColor,
+                            text = "ACTIVE (ON-DEVICE)",
+                            color = NeonEmerald,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
@@ -246,78 +230,31 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = when (val conn = connectionState) {
-                        is ConnectionState.Online -> "Verified connected to ${conn.model}. Official Gemini API integration is active."
-                        is ConnectionState.Checking -> "Sending test telemetry ping to verify Gemini API connection..."
-                        is ConnectionState.Error -> "Connection check failed: ${conn.message}"
-                        is ConnectionState.NoKey -> "No API key detected. Set GEMINI_API_KEY in the Secrets panel in AI Studio or enter a key below."
-                    },
+                    text = "NEXUS is running as an autonomous on-device virtual assistant. No API keys, external servers, quotas, or internet required. All conversations, bilingual speech, and memory records are processed locally on your phone.",
                     color = NexusSilver,
                     fontSize = 12.sp,
-                    lineHeight = 16.sp
+                    lineHeight = 17.sp
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = customKeyInput,
-                    onValueChange = { customKeyInput = it },
-                    label = { Text("Manual API Key Override (Optional)") },
-                    placeholder = { Text("AIzaSy...") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = NexusSilverBright,
-                        unfocusedTextColor = NexusSilverBright,
-                        focusedBorderColor = NexusSilver,
-                        unfocusedBorderColor = NexusBorderHairline,
-                        focusedContainerColor = NexusSurfaceDark,
-                        unfocusedContainerColor = NexusSurfaceDark
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    OutlinedButton(
-                        onClick = { isKeyVisible = !isKeyVisible },
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline)
-                    ) {
-                        Text(
-                            text = if (isKeyVisible) "Hide Key" else "Reveal Key",
-                            color = NexusSilver,
-                            fontSize = 11.5.sp
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            if (customKeyInput.isNotBlank()) {
-                                viewModel.updateCustomApiKey(customKeyInput)
-                                customKeyInput = ""
-                                Toast.makeText(context, "API Key saved successfully", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = NexusTitanium, contentColor = NexusDeepBlack),
-                        enabled = customKeyInput.isNotBlank()
-                    ) {
-                        Text("Apply Key", fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedButton(
-                    onClick = { viewModel.checkConnection() },
+                    onClick = {
+                        viewModel.checkConnection()
+                        Toast.makeText(context, "NEXUS Virtual Engine is 100% active and nominal", Toast.LENGTH_SHORT).show()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     border = androidx.compose.foundation.BorderStroke(1.dp, NexusBorderHairline),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NexusTitanium)
                 ) {
-                    Text("Verify Neural Connection", color = NexusTitanium, fontSize = 12.sp)
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = NeonEmerald,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Virtual Engine Nominal", color = NexusTitanium, fontSize = 12.sp)
                 }
             }
         }
